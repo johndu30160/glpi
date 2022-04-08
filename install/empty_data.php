@@ -2848,6 +2848,20 @@ $empty_data_builder = new class
                 'event' => 'user_mention',
                 'is_recursive' => 1,
                 'is_active' => 1,
+            ], [
+                'id'           => 73,
+                'name'         => 'Change Satisfaction',
+                'itemtype'     => 'Change',
+                'event'        => 'satisfaction',
+                'is_recursive' => 1,
+                'is_active'    => 1,
+            ], [
+                'id'           => 74,
+                'name'         => 'Change Satisfaction Answer',
+                'itemtype'     => 'Change',
+                'event'        => 'replysatisfaction',
+                'is_recursive' => 1,
+                'is_active'    => 1,
             ],
         ];
 
@@ -3212,6 +3226,16 @@ $empty_data_builder = new class
                 'notifications_id' => '72',
                 'mode' => 'mailing',
                 'notificationtemplates_id' => 4,
+            ], [
+                'id'                       => 73,
+                'notifications_id'         => '73',
+                'mode'                     => 'mailing',
+                'notificationtemplates_id' => 29,
+            ], [
+                'id'                       => 74,
+                'notifications_id'         => '74',
+                'mode'                     => 'mailing',
+                'notificationtemplates_id' => 29,
             ],
         ];
 
@@ -3906,6 +3930,21 @@ $empty_data_builder = new class
                 'items_id' => '39',
                 'type' => '1',
                 'notifications_id' => '72',
+            ], [
+                'id'               => '141',
+                'items_id'         => '3',
+                'type'             => '1',
+                'notifications_id' => '73',
+            ], [
+                'id'               => '142',
+                'items_id'         => '3',
+                'type'             => '1',
+                'notifications_id' => '74',
+            ], [
+                'id'               => '143',
+                'items_id'         => '2',
+                'type'             => '1',
+                'notifications_id' => '74',
             ],
         ];
 
@@ -4022,6 +4061,10 @@ $empty_data_builder = new class
                 'id' => '28',
                 'name' => 'Plugin updates',
                 'itemtype' => 'Glpi\\Marketplace\\Controller',
+            ], [
+                'id'       => '29',
+                'name'     => 'Change Satisfaction',
+                'itemtype' => 'Change',
             ],
         ];
 
@@ -4879,6 +4922,17 @@ style="color: #8b8c8f; font-weight: bold; text-decoration: underline;"&gt;
 &lt;ul&gt;##FOREACHplugins##
 &lt;li&gt;##plugin.name## :##plugin.old_version## -&gt; ##plugin.version##&lt;/li&gt;
 ##ENDFOREACHplugins##&lt;/ul&gt;'
+            ], [
+                'id'                       => '29',
+                'notificationtemplates_id' => '29',
+                'language'                 => '',
+                'subject'                  => '##change.action## ##change.title##',
+                'content_text'             => '##lang.change.title## : ##change.title##
+##lang.change.closedate## : ##change.closedate##
+##lang.satisfaction.text## ##change.urlsatisfaction##',
+                'content_html'             => '&lt;p&gt;##lang.change.title## : ##change.title##&lt;/p&gt;
+&lt;p&gt;##lang.change.closedate## : ##change.closedate##&lt;/p&gt;
+&lt;p&gt;##lang.satisfaction.text## &lt;a href="##change.urlsatisfaction##"&gt;##change.urlsatisfaction##&lt;/a&gt;&lt;/p&gt;',
             ],
         ];
 

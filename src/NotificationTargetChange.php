@@ -40,6 +40,15 @@ class NotificationTargetChange extends NotificationTargetCommonITILObject
 {
     public $private_profiles = [];
 
+    public function validateSendTo($event, array $infos, $notify_me = false, $emitter = null)
+    {
+        if ($event == 'satisfaction') {
+            return true;
+        }
+
+        return parent::validateSendTo($event, $infos, $notify_me, $emitter);
+    }
+
     /**
      * Get events related to tickets
      **/
@@ -52,7 +61,9 @@ class NotificationTargetChange extends NotificationTargetCommonITILObject
             'validation'        => __('Validation request'),
             'validation_answer' => __('Validation request answer'),
             'closed'            => __('Closure of a change'),
-            'delete'            => __('Deleting a change')
+            'delete'            => __('Deleting a change'),
+            'satisfaction'      => __('Satisfaction survey'),
+            'replysatisfaction' => __('Satisfaction survey answer')
         ];
 
         $events = array_merge($events, parent::getEvents());
@@ -256,6 +267,37 @@ class NotificationTargetChange extends NotificationTargetCommonITILObject
 
                  $data['validations'][] = $tmp;
             }
+
+            $inquest                               = new ChangeSatisfaction();
+            $data['##satisfaction.type##']         = '';
+            $data['##satisfaction.datebegin##']    = '';
+            $data['##satisfaction.dateanswered##'] = '';
+            $data['##satisfaction.satisfaction##'] = '';
+            $data['##satisfaction.description##']  = '';
+
+            if ($inquest->getFromDB($item->getField('id'))) {
+                // internal inquest
+                if ($inquest->fields['type'] == 1) {
+                    $data['##change.urlsatisfaction##']
+                        = $this->formatURL(
+                        $options['additionnaloption']['usertype'],
+                        "change_" . $item->getField("id") . '_Change$3'
+                    );
+                } else if ($inquest->fields['type'] == 2) { // external inquest
+                    $data['##change.urlsatisfaction##'] = Entity::generateLinkSatisfaction($item);
+                }
+
+                $data['##satisfaction.type##']
+                    = $inquest->getTypeInquestName($inquest->getfield('type'));
+                $data['##satisfaction.datebegin##']
+                    = Html::convDateTime($inquest->fields['date_begin']);
+                $data['##satisfaction.dateanswered##']
+                    = Html::convDateTime($inquest->fields['date_answered']);
+                $data['##satisfaction.satisfaction##']
+                    = $inquest->fields['satisfaction'];
+                $data['##satisfaction.description##']
+                    = $inquest->fields['comment'];
+            }
         }
         return $data;
     }
@@ -341,7 +383,12 @@ class NotificationTargetChange extends NotificationTargetCommonITILObject
                                         __('%1$s: %2$s'),
                                         __('Validation request'),
                                         __('URL')
-                                    )
+                                    ),
+            'change.urlsatisfaction'  => sprintf(
+                __('%1$s: %2$s'),
+                __('Satisfaction'),
+                __('URL')
+            ),
         ];
 
         foreach ($tags as $tag => $label) {
@@ -350,6 +397,43 @@ class NotificationTargetChange extends NotificationTargetCommonITILObject
                 'value' => true,
                 'lang'  => false,
                 'events' => ['validation', 'validation_answer']
+            ]);
+        }
+
+        // Events for ticket satisfaction
+        $tags = ['satisfaction.datebegin'    => __('Creation date of the satisfaction survey'),
+            'satisfaction.dateanswered' => __('Response date to the satisfaction survey'),
+            'satisfaction.satisfaction' => __('Satisfaction'),
+            'satisfaction.description'  => __('Comments to the satisfaction survey')
+        ];
+
+        foreach ($tags as $tag => $label) {
+            $this->addTagToList(['tag'    => $tag,
+                'label'  => $label,
+                'value'  => true,
+                'events' => ['satisfaction']
+            ]);
+        }
+
+        $tags = ['satisfaction.type'  => __('Survey type'),];
+
+        foreach ($tags as $tag => $label) {
+            $this->addTagToList(['tag'    => $tag,
+                'label'  => $label,
+                'value'  => true,
+                'lang'   => false,
+                'events' => ['satisfaction']
+            ]);
+        }
+
+        $tags = ['satisfaction.text' => __('Invitation to fill out the survey')];
+
+        foreach ($tags as $tag => $label) {
+            $this->addTagToList(['tag'    => $tag,
+                'label'  => $label,
+                'value'  => false,
+                'lang'   => true,
+                'events' => ['satisfaction']
             ]);
         }
 

@@ -34,7 +34,7 @@
 use Glpi\SocketModel;
 
 // Current version of GLPI
-define('GLPI_VERSION', '10.0.0-rc3');
+define('GLPI_VERSION', '10.1.0-dev');
 define(
     "GLPI_SCHEMA_VERSION",
     GLPI_VERSION . (
@@ -555,7 +555,7 @@ $CFG_GLPI['javascript'] = [
         'planning'  => ['clipboard', 'fullcalendar', 'tinymce', 'planning'],
         'ticket'    => array_merge(['rateit', 'tinymce', 'kanban'], $dashboard_libs),
         'problem'   => ['tinymce', 'kanban', 'sortable'],
-        'change'    => ['tinymce', 'kanban', 'sortable'],
+        'change'    => ['tinymce', 'kanban', 'sortable', 'rateit'],
         'stat'      => ['charts']
     ],
     'tools'     => [

@@ -5976,14 +5976,6 @@ JAVASCRIPT;
         return $output;
     }
 
-
-    /**
-     * Give cron information
-     *
-     * @param string $name  Task's name
-     *
-     * @return array Array of information
-     **/
     public static function cronInfo($name)
     {
 
@@ -5994,13 +5986,10 @@ JAVASCRIPT;
             case 'alertnotclosed':
                 return ['description' => __('Not solved tickets')];
 
-            case 'createinquest':
-                return ['description' => __('Generation of satisfaction surveys')];
-
             case 'purgeticket':
                 return ['description' => __('Automatic closed tickets purge')];
         }
-        return [];
+        return parent::cronInfo($name);
     }
 
 
@@ -6145,130 +6134,6 @@ JAVASCRIPT;
 
         return ($tot > 0 ? 1 : 0);
     }
-
-
-    /**
-     * Cron for ticketsatisfaction's automatic generated
-     *
-     * @param CronTask $task
-     *
-     * @return integer (0 : nothing done - 1 : done)
-     **/
-    public static function cronCreateInquest($task)
-    {
-        global $DB;
-
-        $conf        = new Entity();
-        $inquest     = new TicketSatisfaction();
-        $tot         = 0;
-        $maxentity   = [];
-        $tabentities = [];
-
-        $rate = Entity::getUsedConfig('inquest_config', 0, 'inquest_rate');
-        if ($rate > 0) {
-            $tabentities[0] = $rate;
-        }
-
-        foreach ($DB->request('glpi_entities') as $entity) {
-            $rate   = Entity::getUsedConfig('inquest_config', $entity['id'], 'inquest_rate');
-            $parent = Entity::getUsedConfig('inquest_config', $entity['id'], 'entities_id');
-
-            if ($rate > 0) {
-                $tabentities[$entity['id']] = $rate;
-            }
-        }
-
-        foreach ($tabentities as $entity => $rate) {
-            $parent        = Entity::getUsedConfig('inquest_config', $entity, 'entities_id');
-            $delay         = Entity::getUsedConfig('inquest_config', $entity, 'inquest_delay');
-            $duration      = Entity::getUsedConfig('inquest_config', $entity, 'inquest_duration');
-            $type          = Entity::getUsedConfig('inquest_config', $entity);
-            $max_closedate = Entity::getUsedConfig('inquest_config', $entity, 'max_closedate');
-
-            $table = self::getTable();
-            $iterator = $DB->request([
-                'SELECT'    => [
-                    "$table.id",
-                    "$table.closedate",
-                    "$table.entities_id"
-                ],
-                'FROM'      => $table,
-                'LEFT JOIN' => [
-                    'glpi_ticketsatisfactions' => [
-                        'ON' => [
-                            'glpi_ticketsatisfactions' => 'tickets_id',
-                            'glpi_tickets'             => 'id'
-                        ]
-                    ],
-                    'glpi_entities'            => [
-                        'ON' => [
-                            'glpi_tickets'    => 'entities_id',
-                            'glpi_entities'   => 'id'
-                        ]
-                    ]
-                ],
-                'WHERE'     => [
-                    "$table.entities_id"          => $entity,
-                    "$table.is_deleted"           => 0,
-                    "$table.status"               => self::CLOSED,
-                    "$table.closedate"            => ['>', $max_closedate],
-                    new QueryExpression("ADDDATE(" . $DB->quoteName("$table.closedate") . ", INTERVAL $delay DAY) <= NOW()"),
-                    new QueryExpression("ADDDATE(" . $DB->quoteName("glpi_entities.max_closedate") . ", INTERVAL $duration DAY) <= NOW()"),
-                    "glpi_ticketsatisfactions.id" => null
-                ],
-                'ORDERBY'   => 'closedate ASC'
-            ]);
-
-            $nb            = 0;
-            $max_closedate = '';
-
-            foreach ($iterator as $tick) {
-                $max_closedate = $tick['closedate'];
-                if (mt_rand(1, 100) <= $rate) {
-                    if (
-                        $inquest->add(['tickets_id'  => $tick['id'],
-                            'date_begin'  => $_SESSION["glpi_currenttime"],
-                            'entities_id' => $tick['entities_id'],
-                            'type'        => $type
-                        ])
-                    ) {
-                        $nb++;
-                    }
-                }
-            }
-
-           // conservation de toutes les max_closedate des entites filles
-            if (
-                !empty($max_closedate)
-                && (!isset($maxentity[$parent])
-                 || ($max_closedate > $maxentity[$parent]))
-            ) {
-                $maxentity[$parent] = $max_closedate;
-            }
-
-            if ($nb) {
-                $tot += $nb;
-                $task->addVolume($nb);
-                $task->log(sprintf(
-                    __('%1$s: %2$s'),
-                    Dropdown::getDropdownName('glpi_entities', $entity),
-                    $nb
-                ));
-            }
-        }
-
-       // Sauvegarde du max_closedate pour ne pas tester les m??me tickets 2 fois
-        foreach ($maxentity as $parent => $maxdate) {
-            $conf->getFromDB($parent);
-            $conf->update(['id'            => $conf->fields['id'],
-                             //'entities_id'   => $parent,
-                'max_closedate' => $maxdate
-            ]);
-        }
-
-        return ($tot > 0 ? 1 : 0);
-    }
-
 
     /**
      * Cron for ticket's automatic purge

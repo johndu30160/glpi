@@ -219,6 +219,13 @@ class Change extends CommonITILObject
                     if ($item->canUpdate()) {
                          $ong[1] = __('Statistics');
                     }
+                    $satisfaction = new ChangeSatisfaction();
+                    if (
+                        $satisfaction->getFromDB($item->getID())
+                        && in_array($item->fields['status'], self::getClosedStatusArray())
+                    ) {
+                        $ong[3] = __('Satisfaction');
+                    }
 
                     return $ong;
             }
@@ -235,6 +242,26 @@ class Change extends CommonITILObject
                 switch ($tabnum) {
                     case 1:
                         $item->showStats();
+                        break;
+                    case 3:
+                        $satisfaction = new ChangeSatisfaction();
+                        if (
+                            in_array($item->fields['status'], self::getClosedStatusArray())
+                            && $satisfaction->getFromDB($_GET["id"])
+                        ) {
+                            $duration = Entity::getUsedConfig('inquest_duration_change', $item->fields['entities_id']);
+                            $date2    = strtotime($satisfaction->fields['date_begin']);
+                            if (
+                                ($duration == 0)
+                                || (time() - $date2) <= $duration * DAY_TIMESTAMP
+                            ) {
+                                $satisfaction->showSatisactionForm($item);
+                            } else {
+                                echo "<p class='center b'>" . __('Satisfaction survey expired') . "</p>";
+                            }
+                        } else {
+                            echo "<p class='center b'>" . __('No generated survey') . "</p>";
+                        }
                         break;
                 }
                 break;
@@ -271,6 +298,10 @@ class Change extends CommonITILObject
        // CommonITILTask does not extends CommonDBConnexity
         $ct = new ChangeTask();
         $ct->deleteByCriteria(['changes_id' => $this->fields['id']]);
+
+        // ChangeSatisfaction does not extends CommonDBConnexity
+        $cs = new ChangeSatisfaction();
+        $cs->deleteByCriteria(['changes_id' => $this->fields['id']]);
 
         $this->deleteChildrenAndRelationsFromDb(
             [
@@ -328,6 +359,42 @@ class Change extends CommonITILObject
            // Read again change to be sure that all data are up to date
             $this->getFromDB($this->fields['id']);
             NotificationEvent::raiseEvent($mailtype, $this);
+        }
+
+        // inquest created immediatly if delay = O
+        $inquest       = new ChangeSatisfaction();
+        $rate          = Entity::getUsedConfig(
+            'inquest_config_change',
+            $this->fields['entities_id'],
+            'inquest_rate_change'
+        );
+        $delay         = Entity::getUsedConfig(
+            'inquest_config_change',
+            $this->fields['entities_id'],
+            'inquest_delay_change'
+        );
+        $type          = Entity::getUsedConfig('inquest_config_change', $this->fields['entities_id']);
+        $max_closedate = $this->fields['closedate'];
+
+        if (
+            in_array("status", $this->updates)
+            && in_array($this->input["status"], $this->getClosedStatusArray())
+            && ($delay == 0)
+            && ($rate > 0)
+            && (mt_rand(1, 100) <= $rate)
+        ) {
+            // For reopened ticket
+            $inquest->delete(['changes_id' => $this->fields['id']]);
+
+            $inquest->add(
+                [
+                    'changes_id'    => $this->fields['id'],
+                    'date_begin'    => $_SESSION["glpi_currenttime"],
+                    'entities_id'   => $this->fields['entities_id'],
+                    'type'          => $type,
+                    'max_closedate' => $max_closedate,
+                ]
+            );
         }
     }
 
@@ -1566,5 +1633,10 @@ class Change extends CommonITILObject
             echo "<tr class='tab_bg_2'>";
             echo "<td colspan='6' ><i>" . __('No change found.') . "</i></td></tr>";
         }
+    }
+
+    public static function cronInfo($name)
+    {
+        return parent::cronInfo($name);
     }
 }
